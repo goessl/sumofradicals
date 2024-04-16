@@ -93,9 +93,9 @@ For more precise descriptions of the methods please refer to the docstrings.
 
 ## TODO
 
-- Arithmetic with floats (cast self to float and then use float arithmetic, like `fractions/Fraction`)
-- Complexity analysis. Especially of `reduce`.
-- `abs` & `sign` methods. Might be difficult:
+- [ ] Arithmetic with floats (cast self to float and then use float arithmetic, like `fractions/Fraction`)
+- [ ] Complexity analysis. Especially of `reduce`.
+- [x] `abs` & `sign` methods. Might be difficult:
   [Square-root sum problem - Wikipedia](https://en.wikipedia.org/wiki/Square-root_sum_problem)
   [Sum of radicals - Wikipedia](https://en.wikipedia.org/wiki/Sum_of_radicals#:~:text=The%20sum%20of%20radicals%20is,finite%20linear%20combination%20of%20radicals%3A&text=are%20real%20numbers.)
 

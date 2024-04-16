@@ -6,7 +6,7 @@ long_description = (this_directory / 'README.md').read_text()
 
 setup(
     name = 'sqrtfractions',
-    version = '0.9',
+    version = '0.9.1',
     description = 'A Python module to handle linear combinations of square roots.',
     long_description = long_description,
     long_description_content_type = 'text/markdown',
@@ -18,6 +18,7 @@ setup(
     py_modules = ['sqrtfractions'],
     url = 'https://github.com/goessl/sqrtfractions',
     python_requires = '>=3.12',
+    install_requires = ['sympy'],
     
     classifiers = [
         'Development Status :: 5 - Production/Stable',

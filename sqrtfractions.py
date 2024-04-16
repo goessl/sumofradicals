@@ -2,7 +2,8 @@ from math import sqrt, gcd, sumprod
 from collections import defaultdict
 from random import randint
 from itertools import product, islice
-from functools import cache
+from sympy.ntheory import primefactors
+from functools import cache, total_ordering
 
 
 @cache
@@ -22,6 +23,7 @@ def _reduce_sqrt(r):
 
 
 
+@total_ordering
 class SqrtFraction:
     r"""Class to handle numbers in the form $\sum_in_i\sqrt{r_i}/d$.
     
@@ -93,6 +95,64 @@ class SqrtFraction:
             return self.n.get(1, 0)
         else:
             raise ValueError('doesn\'t represent an integer')
+    
+    
+    def __len__(self):
+        """Return the number of square roots in the numerator."""
+        return len(self.n)
+    
+    def __eq__(self, other):
+        """Return if this equals another SqrtFraction or integer in value."""
+        if isinstance(other, SqrtFraction):
+            self, other = self.reduce(), other.reduce()
+            return self.n == other.n and self.d == other.d
+        elif isinstance(other, int):
+            try:
+                return int(self) == other
+            except:
+                return False
+        else:
+            raise TypeError
+    
+    def __lt__(self, other):
+        """Return if this is less than another SqrtFraction or integer."""
+        #https://math.stackexchange.com/a/1076510
+        if isinstance(other, SqrtFraction) or isinstance(other, int):
+            s = (self - other).reduce()
+            
+            while len(s) > 1:
+                #find highest factor in square roots
+                pivot = max(
+                        max(primefactors(n), default=0) for n in s.n.keys())
+                
+                #move all terms with factor to the right (s<?0 <=> (s-r)<?-r)
+                r = SqrtFraction(
+                        {k:-v for k, v in s.n.items() if k%pivot==0}, s.d)
+                s = SqrtFraction(
+                        {k:v for k, v in s.n.items() if k%pivot!=0}, s.d)
+                
+                #determine signs of both side for squaring
+                #(inequality sign may change)
+                #https://math.stackexchange.com/a/2347212
+                #the pivot can be factored out on the right side
+                #so sign(x) now has to deal with one degree less for both sides
+                ss, sr = s<0, r*SqrtFraction({pivot:1}, pivot)<0
+                #square both sides, adjust inequality sign
+                s, r = s*s, r*r
+                if ss:
+                    s = -s
+                if sr:
+                    r = -r
+                #pivot is now gone from within the square roots everywhere
+                
+                #move right side back to the left ((s-r)<?-r <=> s<?0)
+                s = (s - r).reduce()
+            
+            #when there is only one term left in the numerator
+            #then the sign is trivial
+            return next(iter(s.n.values()), 0) * s.d < 0
+        else:
+            raise TypeError
     
     
     def __repr__(self):
@@ -243,6 +303,11 @@ if __name__ == '__main__':
     def isclose(a, *b, rel_tol=1e-09, abs_tol=0.0):
         return all(iscl(a, bi, rel_tol=rel_tol, abs_tol=abs_tol) for bi in b)
     
+    
+    #comparison
+    for _ in range(1000):
+        a, b = SqrtFraction.random(), SqrtFraction.random()
+        assert (a<b) == (float(a)<float(b))
     
     #reduce
     for _ in range(1000):
