@@ -46,9 +46,14 @@ class SqrtFraction:
         if isinstance(n, int):
             self.n, self.d = {1:n}, d
         elif isinstance(n, dict):
-            assert all(isinstance(k, int) and k>0 for k in n.keys())
-            assert all(isinstance(v, int) for v in n.values())
-            assert isinstance(d, int) and d
+            if not (all(isinstance(k, int) for k in n.keys())
+                    and all(isinstance(v, int) for v in n.values())
+                    and isinstance(d, int)):
+                raise TypeError('Radicands, factors and denominator'
+                        + ' must be integers.')
+            if not all(k>0 for k in n.keys()) or not d:
+                raise ValueError('Radicands must be greater than zero,'
+                        + ' denominator must be non-zero.')
             self.n, self.d = n, d
         else:
             raise TypeError
@@ -303,6 +308,16 @@ if __name__ == '__main__':
     def isclose(a, *b, rel_tol=1e-09, abs_tol=0.0):
         return all(iscl(a, bi, rel_tol=rel_tol, abs_tol=abs_tol) for bi in b)
     
+    
+    #creation
+    for _ in range(1000):
+        i = randint(-100, +100)
+        a = SqrtFraction(i)
+        assert isclose(float(a), i) and int(a)==i
+        
+        i, j = randint(-100, +100), randint(-100, +100-1) or +100
+        a = SqrtFraction(i, j)
+        assert isclose(float(a), i/j)
     
     #comparison
     for _ in range(1000):
