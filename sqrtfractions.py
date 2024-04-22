@@ -33,7 +33,7 @@ class SqrtFraction:
     This class is immutable.
     """
     
-    def __init__(self, n={}, d=1):
+    def __init__(self, n={}, d=1, reduce=True):
         """Construct a new SqrtFraction.
         
         The numerator `n` is expected to be a dictionary with r_i:n_i as
@@ -44,7 +44,7 @@ class SqrtFraction:
         No arguments defaults to 0.
         """
         if isinstance(n, int):
-            self.n, self.d = {1:n}, d
+            n = {1:n}
         elif isinstance(n, dict):
             if not (all(isinstance(k, int) for k in n.keys())
                     and all(isinstance(v, int) for v in n.values())
@@ -54,12 +54,29 @@ class SqrtFraction:
             if not all(k>0 for k in n.keys()) or not d:
                 raise ValueError('Radicands must be greater than zero,'
                         + ' denominator must be non-zero.')
-            self.n, self.d = n, d
         else:
             raise TypeError
+        
+        if reduce:
+            #simplify numerator
+            _n = defaultdict(int)
+            for k, v in n.items():
+                f, k = _reduce_sqrt(k)
+                _n[k] += f * v
+            n = {k:v for k, v in _n.items() if v}
+            #short fraction
+            while (cd := gcd(*n.values(), d)) > 1:
+                n = {k:v//cd for k, v in n.items()}
+                d //= cd
+            #aesthetics
+            if d < 0:
+                n, d = {k:-v for k, v in n.items()}, -d
+            n = dict(sorted(n.items()))
+        self.n, self.d = n, d
+    
     
     @staticmethod
-    def random(N=10, precision=20):
+    def random(N=10, precision=20, reduce=True):
         r"""Return a random SqrtFraction.
         
         The factors from $\sqrt{1}$ up to $\\sqrt{N}$ (incl.)
@@ -69,7 +86,7 @@ class SqrtFraction:
         n = {n:randint(-precision//2, +precision//2) for n in range(1, N+1)}
         #https://stackoverflow.com/a/69425586/7367030
         d = randint(-precision//2, +precision//2-1) or +precision//2
-        return SqrtFraction(n, d)
+        return SqrtFraction(n, d, reduce=reduce)
     
     
     def __float__(self):
@@ -95,7 +112,7 @@ class SqrtFraction:
         If this object doesn't represent an integer value
         a ValueError is raised.
         """
-        self = self.reduce()
+        self = SqrtFraction(self.n, self.d)
         if set(self.n.keys())<={1} and self.d==1:
             return self.n.get(1, 0)
         else:
@@ -109,7 +126,8 @@ class SqrtFraction:
     def __eq__(self, other):
         """Return if this equals another SqrtFraction or integer in value."""
         if isinstance(other, SqrtFraction):
-            self, other = self.reduce(), other.reduce()
+            self = SqrtFraction(self.n, self.d)
+            other = SqrtFraction(other.n, other.d)
             return self.n == other.n and self.d == other.d
         elif isinstance(other, int):
             try:
@@ -123,7 +141,7 @@ class SqrtFraction:
         """Return if this is less than another SqrtFraction or integer."""
         #https://math.stackexchange.com/a/1076510
         if isinstance(other, SqrtFraction) or isinstance(other, int):
-            s = (self - other).reduce()
+            s = self - other
             
             while len(s) > 1:
                 #find highest factor in square roots
@@ -151,7 +169,7 @@ class SqrtFraction:
                 #pivot is now gone from within the square roots everywhere
                 
                 #move right side back to the left ((s-r)<?-r <=> s<?0)
-                s = (s - r).reduce()
+                s -= r
             
             #when there is only one term left in the numerator
             #then the sign is trivial
@@ -169,33 +187,6 @@ class SqrtFraction:
         """Return a Latex representation."""
         n = [f'{v:+d}\\sqrt{{{k}}}' for k, v in self.n.items()]
         return '$\\frac{' + (''.join(n) if n else '0') + f'}}{{{self.d}}}$'
-    
-    
-    def reduce(self):
-        """Return a mathematically simplified but equivalent `SqrtFraction`.
-        
-        The radicands in the square roots are reduced
-        by pulling square factors out infront.
-        Terms with a zero coefficient are removed.
-        The fraction is shortened.
-        A negative sign of the denominator is brought to the numerator.
-        The square roots are sorted in ascending order.
-        """
-        #simplify numerator
-        n = defaultdict(int)
-        for k, v in self.n.items():
-            f, k = _reduce_sqrt(k)
-            n[k] += f * v
-        n = {k:v for k, v in n.items() if v}
-        #short fraction
-        d = self.d
-        while (cd := gcd(*n.values(), d)) > 1:
-            n = {k:v//cd for k, v in n.items()}
-            d //= cd
-        #aesthetics
-        if d < 0:
-            n, d = {k:-v for k, v in n.items()}, -d
-        return SqrtFraction(dict(sorted(n.items())), d)
     
     
     #Implement the main arithmetic operations (+, *) completely
@@ -319,15 +310,16 @@ if __name__ == '__main__':
         a = SqrtFraction(i, j)
         assert isclose(float(a), i/j)
     
+    #reduction
+    for _ in range(1000):
+        a = SqrtFraction.random(reduce=False)
+        b = SqrtFraction(a.n, a.d)
+        assert isclose(float(a), float(b))
+    
     #comparison
     for _ in range(1000):
         a, b = SqrtFraction.random(), SqrtFraction.random()
         assert (a<b) == (float(a)<float(b))
-    
-    #reduce
-    for _ in range(1000):
-        a = SqrtFraction.random()
-        assert isclose(float(a), float(a.reduce()))
     
     #add
     for _ in range(1000):

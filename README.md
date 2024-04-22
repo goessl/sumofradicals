@@ -25,6 +25,14 @@ SqrtFraction{(+5√1)/2}
 SqrtFraction{(+3√2+7√5)/2}
 ```
 
+The objects get simplified automaticly on creation, except `reduce=False` is passed.
+```python
+>>> SqrtFraction({4:1, 5:0}, -2, reduce=False)
+SqrtFraction{(+1√4+0√5)/-2}
+>>> SqrtFraction({4:1, 5:0}, -2)
+SqrtFraction{(-1√1)/1}
+```
+
 The objects can be printed
 - in Unicode by `__repr__`
 - in Latex by `_repr_latex_`.
@@ -43,15 +51,6 @@ Traceback (most recent call last):
   File "sqrtfractions.py", line 93, in __int__
     raise ValueError('doesn\'t represent an integer')
 ValueError: doesn't represent an integer
-```
-
-The objects can be simplified with `reduce`:
-```python
->>> s = SqrtFraction({4:1, 5:0}, -2)
->>> s
-SqrtFraction{(+1√4+0√5)/-2}
->>> s.reduce()
-SqrtFraction{(-1√1)/1}
 ```
 
 Basic arithmetic operations are implemented:
@@ -89,7 +88,7 @@ For more precise descriptions of the methods please refer to the docstrings.
 
 ## Design choices
 
-- Not reducing a new `SqrtFraction` directly after initialization: Reducing a `SqrtFraction` is computationally way more demanding than other operations like addition. When many operations have to be done, it is faster to do all of them directly one after another, even if the intermediate results may grow quickly, and then reducing the final result.
+- Reducing a new `SqrtFraction` directly after initialization: Initially `SqrtFraction`s didn't simplify themselves. It had been thought that the intermediate simplification during multiple consecutive operations would hinder performance. Eager simplification actually improved speed of an application. Actual testing would have to be done.
 
 ## TODO
 
