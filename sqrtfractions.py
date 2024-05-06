@@ -47,15 +47,18 @@ class SqrtFraction:
             n = {1:n}
         elif isinstance(n, dict):
             if not (all(isinstance(k, int) for k in n.keys())
-                    and all(isinstance(v, int) for v in n.values())
-                    and isinstance(d, int)):
-                raise TypeError('Radicands, factors and denominator'
-                        + ' must be integers.')
-            if not all(k>0 for k in n.keys()) or not d:
-                raise ValueError('Radicands must be greater than zero,'
-                        + ' denominator must be non-zero.')
+                    and all(isinstance(v, int) for v in n.values())):
+                raise TypeError('Radicands and factors must be integers.')
+            if not all(k>0 for k in n.keys()):
+                raise ValueError('Radicands must be greater than zero.')
         else:
-            raise TypeError
+            raise TypeError('Numerator must be an integer or a dictionary.')
+        
+        if isinstance(d, int):
+            if not d:
+                raise ValueError('Denominator must be non-zero.')
+        else:
+            raise TypeError('Denominator must be an integer.')
         
         if reduce:
             #simplify numerator
