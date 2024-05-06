@@ -33,7 +33,7 @@ class SqrtFraction:
     This class is immutable.
     """
     
-    def __init__(self, n={}, d=1, reduce=True):
+    def __init__(self, n={}, d=1):
         """Construct a new SqrtFraction.
         
         The numerator `n` is expected to be a dictionary with r_i:n_i as
@@ -42,6 +42,7 @@ class SqrtFraction:
         `n` can also be an integer for a usual fraction.
         The denominator `d` must be a non-zero integer.
         No arguments defaults to 0.
+        Numerator and denominator will be simplified to shortest terms.
         """
         if isinstance(n, int):
             n = {1:n}
@@ -60,26 +61,26 @@ class SqrtFraction:
         else:
             raise TypeError('Denominator must be an integer.')
         
-        if reduce:
-            #simplify numerator
-            _n = defaultdict(int)
-            for k, v in n.items():
-                f, k = _reduce_sqrt(k)
-                _n[k] += f * v
-            n = {k:v for k, v in _n.items() if v}
-            #short fraction
-            while (cd := gcd(*n.values(), d)) > 1:
-                n = {k:v//cd for k, v in n.items()}
-                d //= cd
-            #aesthetics
-            if d < 0:
-                n, d = {k:-v for k, v in n.items()}, -d
-            n = dict(sorted(n.items()))
+        #simplify numerator
+        _n = defaultdict(int)
+        for k, v in n.items():
+            f, k = _reduce_sqrt(k)
+            _n[k] += f * v
+        n = {k:v for k, v in _n.items() if v}
+        #short fraction
+        while (cd := gcd(*n.values(), d)) > 1:
+            n = {k:v//cd for k, v in n.items()}
+            d //= cd
+        #aesthetics
+        if d < 0:
+            n, d = {k:-v for k, v in n.items()}, -d
+        n = dict(sorted(n.items()))
+        
         self.n, self.d = n, d
     
     
     @staticmethod
-    def random(N=10, precision=20, reduce=True):
+    def random(N=10, precision=20):
         r"""Return a random SqrtFraction.
         
         The factors from $\sqrt{1}$ up to $\\sqrt{N}$ (incl.)
@@ -89,7 +90,7 @@ class SqrtFraction:
         n = {n:randint(-precision//2, +precision//2) for n in range(1, N+1)}
         #https://stackoverflow.com/a/69425586/7367030
         d = randint(-precision//2, +precision//2-1) or +precision//2
-        return SqrtFraction(n, d, reduce=reduce)
+        return SqrtFraction(n, d)
     
     
     def __float__(self):
@@ -99,15 +100,8 @@ class SqrtFraction:
         is first reduced and then calculating the float value is tried again.
         If this also overflows an OverflowError is raised.
         """
-        try:
-            #cast to float in case of and empty dict (then sum would be int)
-            return float(sumprod(self.n.values(), map(sqrt, self.n.keys()))) \
-                    / self.d
-        except OverflowError:
-            #return float(self.reduce()) may recourse indefinitely
-            self = self.reduce()
-            return float(sumprod(self.n.values(), map(sqrt, self.n.keys()))) \
-                    / self.d
+        return float(sumprod(self.n.values(), map(sqrt, self.n.keys()))) \
+                / self.d
     
     def __int__(self):
         """Return the integer value.
@@ -115,7 +109,6 @@ class SqrtFraction:
         If this object doesn't represent an integer value
         a ValueError is raised.
         """
-        self = SqrtFraction(self.n, self.d)
         if set(self.n.keys())<={1} and self.d==1:
             return self.n.get(1, 0)
         else:
@@ -138,8 +131,6 @@ class SqrtFraction:
     def __eq__(self, other):
         """Return if this equals another SqrtFraction or integer in value."""
         if isinstance(other, SqrtFraction):
-            self = SqrtFraction(self.n, self.d)
-            other = SqrtFraction(other.n, other.d)
             return self.n == other.n and self.d == other.d
         elif isinstance(other, int):
             try:
@@ -321,12 +312,6 @@ if __name__ == '__main__':
         i, j = randint(-100, +100), randint(-100, +100-1) or +100
         a = SqrtFraction(i, j)
         assert isclose(float(a), i/j)
-    
-    #reduction
-    for _ in range(1000):
-        a = SqrtFraction.random(reduce=False)
-        b = SqrtFraction(a.n, a.d)
-        assert isclose(float(a), float(b))
     
     #comparison
     for _ in range(1000):

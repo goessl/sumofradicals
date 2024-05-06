@@ -25,10 +25,8 @@ SqrtFraction{(+5√1)/2}
 SqrtFraction{(+3√2+7√5)/2}
 ```
 
-The objects get simplified automaticly on creation, except `reduce=False` is passed.
+The objects get simplified automaticly on creation.
 ```python
->>> SqrtFraction({4:1, 5:0}, -2, reduce=False)
-SqrtFraction{(+1√4+0√5)/-2}
 >>> SqrtFraction({4:1, 5:0}, -2)
 SqrtFraction{(-1√1)/1}
 ```
