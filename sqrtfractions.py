@@ -118,6 +118,15 @@ class SqrtFraction:
         else:
             raise ValueError('doesn\'t represent an integer')
     
+    def __bool__(self):
+        """Return if this is non-zero."""
+        #leave this to avoid `if obj` call len(obj) instead of int(obj)
+        #this is a numeric class, not a container
+        try:
+            return bool(int(self))
+        except:
+            return True
+    
     
     def __len__(self):
         """Return the number of square roots in the numerator."""
