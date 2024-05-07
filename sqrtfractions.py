@@ -100,8 +100,12 @@ class SqrtFraction:
         is first reduced and then calculating the float value is tried again.
         If this also overflows an OverflowError is raised.
         """
-        return float(sumprod(self.n.values(), map(sqrt, self.n.keys()))) \
-                / self.d
+        #dicts aren't hashable, so __float__ can't be made a cached_property
+        if not hasattr(self, '_float'):
+            self._float = \
+                    float(sumprod(self.n.values(), map(sqrt, self.n.keys()))) \
+                            / self.d
+        return self._float
     
     def __int__(self):
         """Return the integer value.
