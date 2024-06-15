@@ -8,11 +8,18 @@ from fractions import Fraction
 
 
 @cache
-def _reduce_sqrt(r):
+def factor_sqrt(r):
     """Return `s, t` such that `sqrt(r)=s*sqrt(t)`.
     
     The result has the lowest radicand possible.
     `r` must be a non-negative integer.
+    
+    Takes at most
+    - sqrt(r)-1 additions,
+    - 2sqrt(r)+2 multiplications,
+    - <10 floor divisions,
+    - sqrt(r) modular divisions &
+    - 2sqrt(r) int to bool and integer comparisons combined.
     """
     s, i = 1, 2 #factor in front, test factor
     while i**2 <= r:
@@ -65,7 +72,7 @@ class SqrtFraction:
         #simplify numerator
         _n = defaultdict(int)
         for k, v in n.items():
-            f, k = _reduce_sqrt(k)
+            f, k = factor_sqrt(k)
             _n[k] += f * v
         n = {k:v for k, v in _n.items() if v}
         #short fraction
@@ -284,27 +291,33 @@ class SqrtFraction:
 
 
 if __name__ == '__main__':
-    assert _reduce_sqrt(0) == (1, 0)
-    assert _reduce_sqrt(1) == (1, 1)
-    assert _reduce_sqrt(2) == (1, 2)
-    assert _reduce_sqrt(3) == (1, 3)
-    assert _reduce_sqrt(4) == (2, 1)
-    assert _reduce_sqrt(5) == (1, 5)
-    assert _reduce_sqrt(6) == (1, 6)
-    assert _reduce_sqrt(7) == (1, 7)
-    assert _reduce_sqrt(8) == (2, 2)
-    assert _reduce_sqrt(9) == (3, 1)
-    assert _reduce_sqrt(10) == (1, 10)
-    assert _reduce_sqrt(11) == (1, 11)
-    assert _reduce_sqrt(12) == (2, 3)
-    assert _reduce_sqrt(13) == (1, 13)
-    assert _reduce_sqrt(14) == (1, 14)
-    assert _reduce_sqrt(15) == (1, 15)
-    assert _reduce_sqrt(16) == (4, 1)
-    assert _reduce_sqrt(17) == (1, 17)
-    assert _reduce_sqrt(18) == (3, 2)
-    assert _reduce_sqrt(19) == (1, 19)
-    assert _reduce_sqrt(20) == (2, 5)
+    assert factor_sqrt(0) == (1, 0)
+    assert factor_sqrt(1) == (1, 1)
+    assert factor_sqrt(2) == (1, 2)
+    assert factor_sqrt(3) == (1, 3)
+    assert factor_sqrt(4) == (2, 1)
+    assert factor_sqrt(5) == (1, 5)
+    assert factor_sqrt(6) == (1, 6)
+    assert factor_sqrt(7) == (1, 7)
+    assert factor_sqrt(8) == (2, 2)
+    assert factor_sqrt(9) == (3, 1)
+    assert factor_sqrt(10) == (1, 10)
+    assert factor_sqrt(11) == (1, 11)
+    assert factor_sqrt(12) == (2, 3)
+    assert factor_sqrt(13) == (1, 13)
+    assert factor_sqrt(14) == (1, 14)
+    assert factor_sqrt(15) == (1, 15)
+    assert factor_sqrt(16) == (4, 1)
+    assert factor_sqrt(17) == (1, 17)
+    assert factor_sqrt(18) == (3, 2)
+    assert factor_sqrt(19) == (1, 19)
+    assert factor_sqrt(20) == (2, 5)
+    
+    for _ in range(1000):
+        r = randint(1, 10000)
+        s, r_ = factor_sqrt(r)
+        #s*sqrt(r_)=sqrt(r) <=> s^2*r_=r
+        assert s**2 * r_ == r
     
     
     

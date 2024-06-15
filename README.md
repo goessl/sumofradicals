@@ -30,6 +30,7 @@ The objects get simplified automaticly on creation.
 >>> SqrtFraction({4:1, 5:0}, -2)
 SqrtFraction{(-1√1)/1}
 ```
+See more in [complexity analysis](##complexity-analysis).
 
 The objects can be printed
 - in Unicode by `__repr__`
@@ -89,12 +90,20 @@ For more precise descriptions of the methods please refer to the docstrings.
 
 ## Design choices
 
+- Denominator (not just integer coefficients but rather rationals): This representation is also closed under division, not just under addition/subtraction and multiplication.
 - Reducing a new `SqrtFraction` directly after initialization: Initially `SqrtFraction`s didn't simplify themselves. It had been thought that the intermediate simplification during multiple consecutive operations would hinder performance. Eager simplification actually improved speed of an application. Actual testing would have to be done.
+
+## Complexity analysis
+
+The main function behind the simplification on creation is `factor_sqrt(r)`. It factors perfect squares out of the square root so that the radicand is as small as possible.
+The operations are counted in [profiling.ipynb]. The bounds were guessed.
+![png](https://raw.githubusercontent.com/goessl/sqrtfractions/main/factor_sqrt_profiling.png)
+
 
 ## TODO
 
 - [ ] Arithmetic with floats (cast self to float and then use float arithmetic, like `fractions/Fraction`)
-- [ ] Complexity analysis. Especially of `reduce`.
+- [x] Complexity analysis. Especially of `factor_sqrt`.
 - [x] `abs` & `sign` methods. Might be difficult:
   [Square-root sum problem - Wikipedia](https://en.wikipedia.org/wiki/Square-root_sum_problem)
   [Sum of radicals - Wikipedia](https://en.wikipedia.org/wiki/Sum_of_radicals#:~:text=The%20sum%20of%20radicals%20is,finite%20linear%20combination%20of%20radicals%3A&text=are%20real%20numbers.)
