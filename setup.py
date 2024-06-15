@@ -6,7 +6,7 @@ long_description = (this_directory / 'README.md').read_text()
 
 setup(
     name = 'sqrtfractions',
-    version = '0.9.3',
+    version = '0.9.4',
     description = 'A Python module to handle linear combinations of square roots.',
     long_description = long_description,
     long_description_content_type = 'text/markdown',

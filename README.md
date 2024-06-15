@@ -38,11 +38,14 @@ The objects can be printed
 The objects can be casted to
 - `float`s
 - `int`s
+- `Fraction`s
 ```python
 >>> float(SqrtFraction(5, 2))
 2.5
 >>> int(SqrtFraction(5))
 5
+>>> SqrtFraction(5, 2).as_fraction()
+Fraction(5, 2)
 >>> int(SqrtFraction(5, 2))
 Traceback (most recent call last):
   File "<stdin>", line 1, in <module>

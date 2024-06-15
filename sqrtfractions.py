@@ -4,6 +4,7 @@ from random import randint
 from itertools import product, islice
 from sympy.ntheory import primefactors
 from functools import cache, total_ordering
+from fractions import Fraction
 
 
 @cache
@@ -117,6 +118,12 @@ class SqrtFraction:
             return self.n.get(1, 0)
         else:
             raise ValueError('doesn\'t represent an integer')
+    
+    def as_fraction(self):
+        if set(self.n.keys())<={1}:
+            return Fraction(self.n.get(1, 0), self.d)
+        else:
+            raise ValueError('doesn\'t represent a fraction')
     
     def __bool__(self):
         """Return if this is non-zero."""
@@ -316,6 +323,7 @@ if __name__ == '__main__':
         i, j = randint(-100, +100), randint(-100, +100-1) or +100
         a = SqrtFraction(i, j)
         assert isclose(float(a), i/j)
+        assert a.as_fraction() == Fraction(i, j)
     
     #comparison
     for _ in range(1000):
