@@ -1,45 +1,44 @@
 # sqrtfractions
 
 Python module to handle linear combinations of square roots (field extension of rational numbers over integer square roots) exactly.
-A single class, `SqrtFraction`, is provided, to create object of the form
+A single immutable class, `SqrtFraction`, is provided, to create object of the form
 
 $$
-    \frac{\sum_in_i\sqrt{r_i}}{d} \qquad n_i\in\mathbb{Z}, \ r_i\in\mathbb{N}^+, \ d\in \mathbb{Z}\setminus\{0\}
+    \frac{\sum_in_i\sqrt{r_i}}{d} \qquad n_i\in\mathbb{Z}, \ r_i, d\in\mathbb{N}^+
 $$
 
+where the values are represented by Pythons built-in arbitrary size integers, meaning there is no theoretical limit in magnitude nor precision. It's meant to be the next step from Pythons `fraction/Fraction` towards the reals.
 
-where the values are represented by Pythons built-in arbitrary size integers, meaning there is no theoretical limit in magnitude nor precision. It's meant to be a next step to Pythons `fraction/Fraction`.
+## Installation
+
+```console
+pip install git+https://github.com/goessl/sqrtfractions.git
+```
 
 ## Usage
 
-A `SqrtFraction` object can be initialized in two ways:
-- with the constructor `SqrtFraction(n={}, d=1)`. The numerator `n` can be given as an integer or as a dictionary of keys:values that correspond to the radicand:factor terms (`SqrtFraction{2:3, 5:-7})` for $\frac{3\sqrt{2}-7\sqrt{5}}{1}$).
+A `SqrtFraction` can be initialised in two ways:
+- with the constructor `SqrtFraction(n={}, d=1)`. The numerator `n` can be given as an integer or as a dictionary of keys:values that correspond to the radicand:factor terms.
 - by the random factory `SqrtFraction.random(N=10, precision=20)`.
 ```python
->>> from _sqrtfractions import SqrtFraction
+>>> from sqrtfractions import SqrtFraction
 >>> SqrtFraction(5)
-SqrtFraction{(+5√1)/1}
++5√1/1
 >>> SqrtFraction(5, 2)
-SqrtFraction{(+5√1)/2}
->>> SqrtFraction({2:3, 5:7}, 2)
-SqrtFraction{(+3√2+7√5)/2}
++5√1/2
+>>> SqrtFraction({2:3, 5:-7}, 2)
+(+3√2-7√5)/2
 ```
 
-The objects get simplified automaticly on creation.
-```python
->>> SqrtFraction({4:1, 5:0}, -2)
-SqrtFraction{(-1√1)/1}
-```
-See more in [complexity analysis](##complexity-analysis).
-
-The objects can be printed
+`SqrtFraction`s can be printed
 - in Unicode by `__repr__`
 - in Latex by `_repr_latex_`.
 
-The objects can be casted to
-- `float`s
-- `int`s
-- `Fraction`s
+`SqrtFraction`s can be casted to
+- `float`s,
+- `int`s (might check first with `is_integer()`),
+- `Fraction`s (might check first with `is_fraction()`) &
+- `bool`s.
 ```python
 >>> float(SqrtFraction(5, 2))
 2.5
@@ -50,60 +49,64 @@ Fraction(5, 2)
 >>> int(SqrtFraction(5, 2))
 Traceback (most recent call last):
   File "<stdin>", line 1, in <module>
-  File "sqrtfractions.py", line 93, in __int__
+  File "sqrtfractions.py", line 114, in __int__
     raise ValueError('doesn\'t represent an integer')
 ValueError: doesn't represent an integer
 ```
 
-Basic arithmetic operations are implemented:
-- unary negation `-` and inversion (reciprocal value) `~`
-- addition `+` and subtraction `-`, multiplication * and division `/` with other `SqrtFraction`s and with `int`s.
+`SqrtFractions` are totally ordered
 ```python
->>> s, t = SqrtFraction({2:3}, 4), SqrtFraction({5:6}, 7)
+>>> s, t = SqrtFraction({2:3}, 4), SqrtFraction({5:-6}, 7)
 >>> s
-SqrtFraction{(+3√2)/4}
++3√2/4
 >>> t
-SqrtFraction{(+6√5)/7}
+-6√5/7
+>>> s == t
+False
+>>> s > t
+True
+>>> abs(t)
++6√5/7
+```
+
+Basic arithmetic operations are implemented:
+- unary negation `-` and inversion (reciprocal value) `~`,
+- addition `+` and subtraction `-`, multiplication `*` and division `/` with other `SqrtFraction`s and with `int`s &
+- exponentiation `**` to positive and negative integers.
+```python
 >>> -s
-SqrtFraction{(+3√2)/-4}
+-3√2/4
 >>> ~s
-SqrtFraction{(-12√2)/-18}
++2√2/3
+>>> 
 >>> s+t
-SqrtFraction{(+21√2+24√5)/28}
->>> s+5
-SqrtFraction{(+3√2+20√1)/4}
+(+21√2-24√5)/28
 >>> s-t
-SqrtFraction{(-21√2+24√5)/-28}
->>> s-5
-SqrtFraction{(+3√2-20√1)/4}
+(+21√2+24√5)/28
+>>> 
 >>> s*t
-SqrtFraction{(+18√10)/28}
->>> s*5
-SqrtFraction{(+15√2)/4}
+-9√10/14
 >>> s/t
-SqrtFraction{(-126√10)/-720}
->>> s/5
-SqrtFraction{(+3√2)/20}
+-7√10/40
+>>> s**-2
++8√1/9
 ```
 
 For more precise descriptions of the methods please refer to the docstrings.
 
 ## Design choices
 
-- Denominator (not just integer coefficients but rather rationals): This representation is also closed under division, not just under addition/subtraction and multiplication.
-- Reducing a new `SqrtFraction` directly after initialization: Initially `SqrtFraction`s didn't simplify themselves. It had been thought that the intermediate simplification during multiple consecutive operations would hinder performance. Eager simplification actually improved speed of an application. Actual testing would have to be done.
+- Reducing a new `SqrtFraction` directly after initialization: Initially `SqrtFraction`s didn't simplify themselves. It had been thought that the intermediate simplification during multiple consecutive operations would hinder performance. Eager simplification actually improved speed of an application. Actual testing hasn't been done.
 
-## Complexity analysis
+## Relevant links
 
-The main function behind the simplification on creation is `factor_sqrt(r)`. It factors perfect squares out of the square root so that the radicand is as small as possible.
-The operations are counted in [profiling.ipynb]. The bounds were guessed.
-![png](https://raw.githubusercontent.com/goessl/sqrtfractions/main/factor_sqrt_profiling.png)
-
+- [Rationalisation (mathematics) - Wikipedia](https://en.wikipedia.org/wiki/Rationalisation_(mathematics))
+- [algorithms - Determine sign of sum of square roots - Mathematics Stack Exchange](https://math.stackexchange.com/a/1076510)
 
 ## TODO
 
+- [ ] Hashing
 - [ ] Arithmetic with floats (cast self to float and then use float arithmetic, like `fractions/Fraction`)
-- [x] Complexity analysis. Especially of `factor_sqrt`.
 - [x] `abs` & `sign` methods. Might be difficult:
   [Square-root sum problem - Wikipedia](https://en.wikipedia.org/wiki/Square-root_sum_problem)
   [Sum of radicals - Wikipedia](https://en.wikipedia.org/wiki/Sum_of_radicals#:~:text=The%20sum%20of%20radicals%20is,finite%20linear%20combination%20of%20radicals%3A&text=are%20real%20numbers.)

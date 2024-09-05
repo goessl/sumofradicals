@@ -1,33 +1,12 @@
-from math import sqrt, gcd, sumprod
+from math import sqrt, isqrt, gcd, sumprod
 from collections import defaultdict
-from random import randint
-from itertools import product, islice
-from sympy.ntheory import primefactors
-from functools import cache, total_ordering
 from fractions import Fraction
-
-
-@cache
-def factor_sqrt(r):
-    """Return `s, t` such that `sqrt(r)=s*sqrt(t)`.
-    
-    The result has the lowest radicand possible.
-    `r` must be a non-negative integer.
-    
-    Takes at most
-    - sqrt(r)-1 additions,
-    - 2sqrt(r)+2 multiplications,
-    - <10 floor divisions,
-    - sqrt(r) modular divisions &
-    - 2sqrt(r) int to bool and integer comparisons combined.
-    """
-    s, i = 1, 2 #factor in front, test factor
-    while i**2 <= r:
-        while not r % i**2:
-            r //= i**2
-            s *= i
-        i += 1
-    return s, r
+from operator import mul
+from sympy.ntheory import primefactors
+from sympy.ntheory.factor_ import core
+from itertools import product, islice, repeat
+from functools import total_ordering, reduce
+from random import randint
 
 
 
@@ -36,18 +15,19 @@ class SqrtFraction:
     r"""Class to handle numbers in the form $\sum_in_i\sqrt{r_i}/d$.
     
     The radicands are integers greater or equal 1,
-    the factors infront of them are integers,
-    the denominator is a non-zero integer.
+    the factors in front of them are integers,
+    the denominator is a integer greater or equal 1.
     This class is immutable.
     """
     
+    #creation
     def __init__(self, n={}, d=1):
-        """Construct a new SqrtFraction.
+        """Create a new `SqrtFraction`.
         
-        The numerator `n` is expected to be a dictionary with r_i:n_i as
-        keys:values where the radicands must be integers >=1
-        and the factors must be integers.
-        `n` can also be an integer for a usual fraction.
+        The numerator `n` is expected to be a dictionary with `ri:ni` as
+        keys:values, where the radicands `ri` must be integers >=1
+        and the factors `ni` must be integers.
+        `n` can also be an integer for an integer fraction.
         The denominator `d` must be a non-zero integer.
         No arguments defaults to 0.
         Numerator and denominator will be simplified to shortest terms.
@@ -72,7 +52,8 @@ class SqrtFraction:
         #simplify numerator
         _n = defaultdict(int)
         for k, v in n.items():
-            f, k = factor_sqrt(k)
+            c = core(k)
+            f, k = isqrt(k//c), c
             _n[k] += f * v
         n = {k:v for k, v in _n.items() if v}
         #short fraction
@@ -86,12 +67,11 @@ class SqrtFraction:
         
         self.n, self.d = n, d
     
-    
     @staticmethod
     def random(N=10, precision=20):
-        r"""Return a random SqrtFraction.
+        r"""Return a random `SqrtFraction.
         
-        The factors from $\sqrt{1}$ up to $\\sqrt{N}$ (incl.)
+        The factors from $\sqrt{1}$ up to $\sqrt{N}$ (incl.)
         and the denominator will be initialised with random integers `ni`
         such that `-precision//2 <= ni <= +precision//2`.
         """
@@ -101,33 +81,53 @@ class SqrtFraction:
         return SqrtFraction(n, d)
     
     
+    #evaluation
     def __float__(self):
-        """Calculate the float approximation.
+        """Calculate the `float` approximation.
         
-        The float value might overflow. Then a copy of this object
-        is first reduced and then calculating the float value is tried again.
-        If this also overflows an OverflowError is raised.
+        The `float` value might overflow.
         """
         #dicts aren't hashable, so __float__ can't be made a cached_property
         if not hasattr(self, '_float'):
-            self._float = \
-                    float(sumprod(self.n.values(), map(sqrt, self.n.keys()))) \
-                            / self.d
+            self._float = sumprod(self.values(), map(sqrt, self.keys())) \
+                    / self.d
+            #empty sumprod=int(0) nevertheless becomes float due to division
         return self._float
+    
+    def is_integer(self):
+        """Return if this is an integer.
+        
+        If `True`, `int()` will return an integer,
+        if `False`, `int()` will raise a `ValueError`.
+        """
+        return set(self.keys())<={1} and self.d==1
     
     def __int__(self):
         """Return the integer value.
         
-        If this object doesn't represent an integer value
-        a ValueError is raised.
+        If this doesn't represent an integer value a ValueError is raised.
+        Can be checked beforehand with `is_integer()`.
         """
-        if set(self.n.keys())<={1} and self.d==1:
+        if self.is_integer():
             return self.n.get(1, 0)
         else:
             raise ValueError('doesn\'t represent an integer')
     
+    def is_fraction(self):
+        """Return this is an integer fraction.
+        
+        If `True`, `as_fraction()` will return a fraction,
+        if `False`, `as_fraction()` will raise a `ValueError`.
+        """
+        return set(self.keys()) <= {1}
+    
     def as_fraction(self):
-        if set(self.n.keys())<={1}:
+        """Return if this as an integer fraction.
+        
+        If this doesn't represent an integer fraction a ValueError is raised.
+        Can be checked beforehand with `is_fraction()`.
+        """
+        if self.is_fraction():
             return Fraction(self.n.get(1, 0), self.d)
         else:
             raise ValueError('doesn\'t represent a fraction')
@@ -135,6 +135,7 @@ class SqrtFraction:
     def __bool__(self):
         """Return if this is non-zero."""
         #leave this to avoid `if obj` call len(obj) instead of int(obj)
+        #https://docs.python.org/3/reference/datamodel.html#object.__bool__
         #this is a numeric class, not a container
         try:
             return bool(int(self))
@@ -142,87 +143,97 @@ class SqrtFraction:
             return True
     
     
+    #collection
     def __len__(self):
-        """Return the number of square roots in the numerator."""
+        """Return the number of summands in the numerator."""
         return len(self.n)
     
+    def keys(self):
+        """Return the radicands `r_i`."""
+        return self.n.keys()
+    
+    def values(self):
+        """Return the factors `n_i` infront of the square roots."""
+        return self.n.values()
+    
+    def items(self):
+        """Return the radicands `r_i` with factors `n_i` as tuples."""
+        return self.n.items()
+    
+    
+    #ordering
     def __eq__(self, other):
-        """Return if this equals another SqrtFraction or integer in value."""
+        """Return if this equals another `SqrtFraction`, `int` or `Fraction`."""
         if isinstance(other, SqrtFraction):
             return self.n == other.n and self.d == other.d
-        elif isinstance(other, int):
-            try:
-                return int(self) == other
+        elif isinstance(other, int) or isinstance(other, Fraction):
+            try: #Fraction handles int comparison
+                return self.as_fraction() == other
             except:
                 return False
         else:
             raise TypeError
     
+    def __abs__(self):
+        """Return the absolute value as a `SqrtFraction`."""
+        return self if self>=0 else -self
+    
     def __lt__(self, other):
-        """Return if this is less than another SqrtFraction or integer."""
+        """Return if this is less than another `SqrtFraction` or `integer`."""
         #https://math.stackexchange.com/a/1076510
         if isinstance(other, SqrtFraction) or isinstance(other, int):
-            s = self - other
+            l = self - other
             
-            while len(s) > 1:
+            while not l.is_fraction():
                 #find highest factor in square roots
-                pivot = max(
-                        max(primefactors(n), default=0) for n in s.n.keys())
+                p = max(max(primefactors(n), default=0) for n in l.keys())
                 
                 #move all terms with factor to the right (s<?0 <=> (s-r)<?-r)
-                r = SqrtFraction(
-                        {k:-v for k, v in s.n.items() if k%pivot==0}, s.d)
-                s = SqrtFraction(
-                        {k:v for k, v in s.n.items() if k%pivot!=0}, s.d)
+                r = SqrtFraction({k//p:-v for k, v in l.items() if k%p==0}, l.d)
+                l = SqrtFraction({k:v for k, v in l.items() if k%p!=0}, l.d)
                 
-                #determine signs of both side for squaring
-                #(inequality sign may change)
                 #https://math.stackexchange.com/a/2347212
                 #the pivot can be factored out on the right side
-                #so sign(x) now has to deal with one degree less for both sides
-                ss, sr = s<0, r*SqrtFraction({pivot:1}, pivot)<0
-                #square both sides, adjust inequality sign
-                s, r = s*s, r*r
-                if ss:
-                    s = -s
-                if sr:
-                    r = -r
+                #so abs(x) now has to deal with one degree less
+                #square both sides, keep sign
+                l, r = l*abs(l), r*abs(r)*p
                 #pivot is now gone from within the square roots everywhere
                 
                 #move right side back to the left ((s-r)<?-r <=> s<?0)
-                s -= r
+                l -= r
             
             #when there is only one term left in the numerator
             #then the sign is trivial
-            return next(iter(s.n.values()), 0) * s.d < 0
+            return l.as_fraction() < 0
         else:
             raise TypeError
     
     
+    #printing
     def __repr__(self):
         """Return a Unicode representation."""
-        n = [f'{v:+d}{chr(0x221A)}{k}' for k, v in self.n.items()]
-        return 'SqrtFraction{(' + ''.join(n) + f')/{self.d}}}'
+        n = [f'{n:+d}{chr(0x221A)}{r}' for r, n in self.items()]
+        if len(n) <= 1: #no parentheses needed
+            return (n[0] if n else '0') + f'/{self.d}'
+        else:
+            return '('+''.join(n)+')' + f'/{self.d}'
     
     def _repr_latex_(self):
         """Return a Latex representation."""
-        n = [f'{v:+d}\\sqrt{{{k}}}' for k, v in self.n.items()]
+        n = [f'{n:+d}\\sqrt{{{r}}}' for r, n in self.items()]
         return '$\\frac{' + (''.join(n) if n else '0') + f'}}{{{self.d}}}$'
     
     
-    #Implement the main arithmetic operations (+, *) completely
-    #with type checks and own integer calculations (don't just wrap the integer
-    #into a SqrtFraction, this way it might be a little bit faster).
-    #Just type checks for inverse arithmetic (-, /) to provide better
-    #error strings.
-    #Reuse commutative versions (radd, rmul) completely.
+    #arithmetic
+    #Implement the main arithmetic operations (+, *) with type checks
+    #Inverse arithmetic (-, /) is completely reused
     def __add__(self, other):
         """Return the sum with an other `SqrtFraction` or `int`."""
         if isinstance(other, SqrtFraction):
             n = defaultdict(int)
-            for k, v in self.n.items():
+            for k, v in self.items():
                 n[k] += v * other.d
-            for k, v in other.n.items():
+            for k, v in other.items():
                 n[k] += v * self.d
             return SqrtFraction(n, self.d*other.d)
         elif isinstance(other, int):
@@ -235,16 +246,12 @@ class SqrtFraction:
     __radd__ = __add__
     
     def __neg__(self):
-        """Return the negation."""
+        """Return the additive negation."""
         return SqrtFraction(self.n, -self.d)
     
     def __sub__(self, other):
-        """Return the difference of an other `SqrtFraction` or `int`."""
-        if isinstance(other, SqrtFraction) or isinstance(other, int):
-            return self + (-other)
-        else:
-            raise TypeError('can only subtract SqrtFraction or int'
-                    + f' (not "{type(other).__name__}") from SqrtFraction')
+        """Return the difference with an other `SqrtFraction` or `int`."""
+        return self + (-other)
     
     def __rsub__(self, other):
         """Return the difference from an other `SqrtFraction` or `int`."""
@@ -254,28 +261,36 @@ class SqrtFraction:
         """Return the product with an other `SqrtFraction` or `int`."""
         if isinstance(other, SqrtFraction):
             n = defaultdict(int)
-            for ki, vi in self.n.items():
-                for kj, vj in other.n.items():
+            for ki, vi in self.items():
+                for kj, vj in other.items():
                     n[ki*kj] += vi * vj
             return SqrtFraction(n, self.d*other.d)
         elif isinstance(other, int):
-            return SqrtFraction({k:v*other for k, v in self.n.items()}, self.d)
+            return SqrtFraction({k:v*other for k, v in self.items()}, self.d)
         else:
             raise TypeError('can only multiply SqrtFraction or int'
                     + f' (not "{type(other).__name__}") with SqrtFraction')
     __rmul__ = __mul__
     
     def __invert__(self):
-        """Return the reciprocal."""
+        """Return the multiplicative reciprocal."""
         #https://www.youtube.com/watch?v=SjP6Mer0aL8
         #https://en.wikipedia.org/wiki/Rationalisation_(mathematics)
-        t, r = {k:v for k, v in self.n.items() if v}, SqrtFraction(1)
-        for p in islice(product((+1, -1), repeat=len(t)), 1, None):
-            r *= SqrtFraction({k:s*v for (k, v), s in zip(t.items(), p)})
-        return self.d * r / int(r * SqrtFraction(t))
+        if self == 0: #repeat=-1 would also raise error, but this is clearer
+            raise ZeroDivisionError
+        if len(self) == 1:
+            r, n = next(iter(self.items()))
+            return SqrtFraction({r:self.d}, n*r)
+        r = 1
+        for p in islice(product((+1, -1), repeat=len(self)-1), 1, None):
+            r *= SqrtFraction(
+                    {k:s*v for (k, v), s in zip(self.items(), (+1,)+p)})
+        return self.d * r / int(r * SqrtFraction(self.n))
     
     def __truediv__(self, other):
         """Return the quotient with an other `SqrtFraction` or `int`."""
+        if other == 0:
+            raise ZeroDivisionError
         if isinstance(other, SqrtFraction):
             return self * ~other
         elif isinstance(other, int):
@@ -285,63 +300,54 @@ class SqrtFraction:
                     + f' SqrtFraction or int (not "{type(other).__name__}")')
     
     def __rtruediv__(self, other):
-        """Return the quotient from an other `SqrtFraction` or `int`."""
-        return ~self * other
+        """Return an other `SqrtFraction` or `int` divided by this."""
+        return (~self) * other
+    
+    def __pow__(self, other):
+        """Return this `SqrtFraction` raised to some integer power.
+        
+        The exponent may be negative.
+        """
+        #repeat does typecheck for int
+        if other >= 0:
+            return reduce(mul, repeat(self, other), SqrtFraction(1))
+        else:
+            return (~self)**(-other)
 
 
 
 if __name__ == '__main__':
-    assert factor_sqrt(0) == (1, 0)
-    assert factor_sqrt(1) == (1, 1)
-    assert factor_sqrt(2) == (1, 2)
-    assert factor_sqrt(3) == (1, 3)
-    assert factor_sqrt(4) == (2, 1)
-    assert factor_sqrt(5) == (1, 5)
-    assert factor_sqrt(6) == (1, 6)
-    assert factor_sqrt(7) == (1, 7)
-    assert factor_sqrt(8) == (2, 2)
-    assert factor_sqrt(9) == (3, 1)
-    assert factor_sqrt(10) == (1, 10)
-    assert factor_sqrt(11) == (1, 11)
-    assert factor_sqrt(12) == (2, 3)
-    assert factor_sqrt(13) == (1, 13)
-    assert factor_sqrt(14) == (1, 14)
-    assert factor_sqrt(15) == (1, 15)
-    assert factor_sqrt(16) == (4, 1)
-    assert factor_sqrt(17) == (1, 17)
-    assert factor_sqrt(18) == (3, 2)
-    assert factor_sqrt(19) == (1, 19)
-    assert factor_sqrt(20) == (2, 5)
-    
-    for _ in range(1000):
-        r = randint(1, 10000)
-        s, r_ = factor_sqrt(r)
-        #s*sqrt(r_)=sqrt(r) <=> s^2*r_=r
-        assert s**2 * r_ == r
-    
-    
-    
     from math import isclose as iscl
     
     def isclose(a, *b, rel_tol=1e-09, abs_tol=0.0):
         return all(iscl(a, bi, rel_tol=rel_tol, abs_tol=abs_tol) for bi in b)
     
     
-    #creation
-    for _ in range(1000):
-        i = randint(-100, +100)
-        a = SqrtFraction(i)
-        assert isclose(float(a), i) and int(a)==i
+    #creation & evaluation
+    for n in range(1, 1000):
+        c = core(n)
+        f, r = isqrt(n//c), c
+        assert f**2 * r == n
+    
+    for _ in range(100):
+        n = randint(-100, +100)
+        a = SqrtFraction(n)
+        assert a==n and int(a)==n and isclose(float(a), n)
         
-        i, j = randint(-100, +100), randint(-100, +100-1) or +100
-        a = SqrtFraction(i, j)
-        assert isclose(float(a), i/j)
-        assert a.as_fraction() == Fraction(i, j)
+        n, d = randint(-100, +100), randint(-100, +100-1) or +100
+        a = SqrtFraction(n, d)
+        assert a.as_fraction()==Fraction(n, d) and isclose(float(a), n/d)
+    
     
     #comparison
-    for _ in range(1000):
+    for _ in range(100):
+        a = SqrtFraction.random()
+        assert isclose(float(abs(a)), abs(float(a)))
+    
+    for _ in range(100):
         a, b = SqrtFraction.random(), SqrtFraction.random()
         assert (a<b) == (float(a)<float(b))
+    
     
     #add
     for _ in range(1000):
@@ -382,3 +388,9 @@ if __name__ == '__main__':
         
         a, b = SqrtFraction.random(5), randint(-20, +20)
         assert isclose(float(b)/float(a), float(b/a), rel_tol=1e-5)
+    
+    #pow
+    for _ in range(10):
+        a = SqrtFraction.random(5)
+        n = randint(-3, +3)
+        assert isclose(float(a**n), float(a)**n)
