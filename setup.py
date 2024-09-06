@@ -5,9 +5,9 @@ this_directory = Path(__file__).parent
 long_description = (this_directory / 'README.md').read_text()
 
 setup(
-    name = 'sqrtfractions',
-    version = '1.0',
-    description = 'A Python module to handle linear combinations of square roots exactly.',
+    name = 'sumofradicals',
+    version = '0.9',
+    description = 'A Python module to handle linear combinations of radicals exactly.',
     long_description = long_description,
     long_description_content_type = 'text/markdown',
     
@@ -15,8 +15,8 @@ setup(
     author_email = 'goessl@student.tugraz.at',
     license = 'MIT',
     
-    py_modules = ['sqrtfractions'],
-    url = 'https://github.com/goessl/sqrtfractions',
+    py_modules = ['sumofradicals'],
+    url = 'https://github.com/goessl/sumofradicals',
     python_requires = '>=3.12',
     install_requires = ['sympy'],
     

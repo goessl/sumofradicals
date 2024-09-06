@@ -1,113 +1,93 @@
-# sqrtfractions
+# sumofradicals
 
-Python module to handle linear combinations of square roots (field extension of rational numbers over integer square roots) exactly.
-A single immutable class, `SqrtFraction`, is provided, to create object of the form
+Python module to handle linear combinations of radicals (field extension of rational numbers over integer roots of various degree) exactly.
+A single immutable class, `SumOfRadicals`, is provided, to create object of the form
 
 $$
-    \frac{\sum_in_i\sqrt{r_i}}{d} \qquad n_i\in\mathbb{Z}, \ r_i, d\in\mathbb{N}^+
+    \frac{\sum_iv_i\sqrt[n_i]{r_i}}{d} \qquad v_i\in\mathbb{Z}, \ n_i, r_i, d\in\mathbb{N}^+
 $$
 
 where the values are represented by Pythons built-in arbitrary size integers, meaning there is no theoretical limit in magnitude nor precision. It's meant to be the next step from Pythons `fraction/Fraction` towards the reals.
 
+*A clearer and faster version for square roots only is available as [sqrtfractions](https://github.com/goessl/sqrtfractions).*
+
 ## Installation
 
 ```console
-pip install git+https://github.com/goessl/sqrtfractions.git
+pip install git+https://github.com/goessl/sumofradicals.git
 ```
 
 ## Usage
 
-A `SqrtFraction` can be initialised in two ways:
-- with the constructor `SqrtFraction(n={}, d=1)`. The numerator `n` can be given as an integer or as a dictionary of keys:values that correspond to the radicand:factor terms.
-- by the random factory `SqrtFraction.random(N=10, precision=20)`.
+A `SumOfRadicals` can be initialised in two ways:
+- with the constructor `SumOfRadicals(n={}, d=1)`. The numerator `n` can be given as an integer or as a dictionary of keys:values that correspond to the (degree, radicand):factor terms.
+- by the random factory `SumOfRadicals.random(N=10, precision=20)`.
 ```python
->>> from sqrtfractions import SqrtFraction
->>> SqrtFraction(5)
-+5√1/1
->>> SqrtFraction(5, 2)
-+5√1/2
->>> SqrtFraction({2:3, 5:-7}, 2)
-(+3√2-7√5)/2
+>>> SumOfRadicals(5)
++5¹√1/1
+>>> SumOfRadicals(5, 2)
++5¹√1/2
+>>> SumOfRadicals({(1, 1):1, (2, 3):11, (5, 7):13}, 17)
+(+1¹√1+11²√3+13⁵√7)/17
 ```
 
-`SqrtFraction`s can be printed
+`SumOfRadicals`s can be printed
 - in Unicode by `__repr__`
 - in Latex by `_repr_latex_`.
 
-`SqrtFraction`s can be casted to
+`SumOfRadicals`s can be casted to
 - `float`s,
 - `int`s (might check first with `is_integer()`),
 - `Fraction`s (might check first with `is_fraction()`) &
 - `bool`s.
 ```python
->>> float(SqrtFraction(5, 2))
+>>> float(SumOfRadicals(5, 2))
 2.5
->>> int(SqrtFraction(5))
+>>> int(SumOfRadicals(5))
 5
->>> SqrtFraction(5, 2).as_fraction()
+>>> SumOfRadicals(5, 2).as_fraction()
 Fraction(5, 2)
->>> int(SqrtFraction(5, 2))
+>>> int(SumOfRadicals(5, 2))
 Traceback (most recent call last):
   File "<stdin>", line 1, in <module>
-  File "sqrtfractions.py", line 114, in __int__
+  File "sumofradicals.py", line 134, in __int__
     raise ValueError('doesn\'t represent an integer')
 ValueError: doesn't represent an integer
 ```
 
-`SqrtFractions` are totally ordered
-```python
->>> s, t = SqrtFraction({2:3}, 4), SqrtFraction({5:-6}, 7)
->>> s
-+3√2/4
->>> t
--6√5/7
->>> s == t
-False
->>> s > t
-True
->>> abs(t)
-+6√5/7
-```
-
 Basic arithmetic operations are implemented:
-- unary negation `-` and inversion (reciprocal value) `~`,
-- addition `+` and subtraction `-`, multiplication `*` and division `/` with other `SqrtFraction`s and with `int`s &
-- exponentiation `**` to positive and negative integers.
+- unary negation `-`,
+- addition `+` and subtraction `-` and multiplication `*` with other `SumOfRadicals`s and with `int`s &
+- exponentiation `**` to non-negative integers.
 ```python
+>>> s, t = SumOfRadicals({(2, 3):5}, 7), SumOfRadicals({(1, 1):2}, 11)
+>>> s
++5²√3/7
+>>> t
++2¹√1/11
 >>> -s
--3√2/4
->>> ~s
-+2√2/3
->>> 
+-5²√3/7
 >>> s+t
-(+21√2-24√5)/28
+(+14¹√1+55²√3)/77
 >>> s-t
-(+21√2+24√5)/28
->>> 
+(-14¹√1+55²√3)/77
 >>> s*t
--9√10/14
->>> s/t
--7√10/40
->>> s**-2
-+8√1/9
++10²√3/77
+>>> s**2
++75¹√1/4
 ```
 
 For more precise descriptions of the methods please refer to the docstrings.
 
 ## Design choices
 
-- Reducing a new `SqrtFraction` directly after initialization: Initially `SqrtFraction`s didn't simplify themselves. It had been thought that the intermediate simplification during multiple consecutive operations would hinder performance. Eager simplification actually improved speed of an application. Actual testing hasn't been done.
-
-## Relevant links
-
-- [Rationalisation (mathematics) - Wikipedia](https://en.wikipedia.org/wiki/Rationalisation_(mathematics))
-- [algorithms - Determine sign of sum of square roots - Mathematics Stack Exchange](https://math.stackexchange.com/a/1076510)
+- Fractions instead of a purely integer linear combinations: In this form all basic arithmetic operations are closed (division wouldn't be otherwise).
 
 ## TODO
 
 - [ ] Hashing
 - [ ] Arithmetic with floats (cast self to float and then use float arithmetic, like `fractions/Fraction`)
-- [x] `abs` & `sign` methods. Might be difficult:
+- [ ] `abs` & `sign` methods. Might be difficult:
   [Square-root sum problem - Wikipedia](https://en.wikipedia.org/wiki/Square-root_sum_problem)
   [Sum of radicals - Wikipedia](https://en.wikipedia.org/wiki/Sum_of_radicals#:~:text=The%20sum%20of%20radicals%20is,finite%20linear%20combination%20of%20radicals%3A&text=are%20real%20numbers.)
 
