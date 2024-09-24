@@ -8,6 +8,10 @@ from itertools import product, islice, repeat
 from functools import reduce, cache
 from random import randint
 
+import numpy as np
+from scipy.linalg import circulant
+from itertools import chain
+from linalg import minor_laplace, det_laplace
 
 
 @cache
@@ -269,12 +273,94 @@ class SumOfRadicals:
                     + f' (not "{type(other).__name__}") with SumOfRadicals')
     __rmul__ = __mul__
     
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    @staticmethod
+    def circulant_n(c, n):
+        C = circulant(c)
+        return n*np.triu(C, 1) + np.tril(C)
+    
+    @staticmethod
+    def factorise_radical(n, r):
+        """Return the prime factorisation of r with fractions (n as denominator) as exponents."""
+        return {p:Fraction(e, n) for p, e in factorint(r).items()}
+    
+    @staticmethod
+    def vectorise(s, degree, radical):
+        c = [0]*degree
+        for (n, r), v in s.items():
+            f = SumOfRadicals.factorise_radical(n, r)
+            if radical in f and degree%f[radical].denominator==0:
+                i = f[radical].numerator * degree // f[radical].denominator
+                c[i] += SumOfRadicals({(n, r//radical**(f[radical].numerator*n//f[radical].denominator)):v}, s.d)
+            else:
+                c[0] += SumOfRadicals({(n, r):v}, s.d)
+        return c
+    
     def __invert__(self):
         """Return the multiplicative reciprocal."""
-        raise NotImplementedError
+        numerator, denominator = self.d, self*self.d
+        while not denominator.is_fraction():
+            factorisations = [SumOfRadicals.factorise_radical(n, r) for n, r in denominator.keys()]
+            r = max(chain(*(f.keys() for f in factorisations)))
+            n = lcm(*(f[r].denominator for f in factorisations if r in f))
+            
+            c = SumOfRadicals.vectorise(denominator, n, r)
+            C = SumOfRadicals.circulant_n(c, r)
+            C[0,:] = [SumOfRadicals({(n, r**i):1}) for i in range(C.shape[1])]
+            factor = det_laplace(C)
+            numerator *= factor
+            denominator *= factor
+        
+        denominator = denominator.as_fraction()
+        return numerator * denominator.denominator / denominator.numerator
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     def __truediv__(self, other):
-        raise NotImplementedError
+        """Return the quotient with an other `SumOfRadicals` or `int`."""
+        if other == 0:
+            raise ZeroDivisionError
+        if isinstance(other, SumOfRadicals):
+            return self * ~other
+        elif isinstance(other, int):
+            return SumOfRadicals(self.n, self.d*other)
+        else:
+            raise TypeError('can only divide SumOfRadicals by'
+                    + f' SumOfRadicals or int (not "{type(other).__name__}")')
     
     def __rtruediv__(self, other):
         """Return an other `SumOfRadicals` or `int` divided by this."""
@@ -346,20 +432,20 @@ if __name__ == '__main__':
         assert isclose(float(a)*b, float(a*b), float(b*a))
     
     #invert
-    #for _ in range(10):
-    #    a = SumOfRadicals.random(5)
-    #    assert isclose(1/float(a), float(~a), rel_tol=1e-5)
+    for _ in range(10):
+        a = SumOfRadicals.random(3)
+        assert a / a == 1
     
     #div
-    #for _ in range(10):
-    #    a, b = SumOfRadicals.random(5), SumOfRadicals.random(5)
-    #    assert isclose(float(a)/float(b), float(a/b), rel_tol=1e-5)
-    #
-    #    a, b = SumOfRadicals.random(5), randint(-20, +20-1) or +20
-    #    assert isclose(float(a)/float(b), float(a/b))
-    #
-    #    a, b = SumOfRadicals.random(5), randint(-20, +20)
-    #    assert isclose(float(b)/float(a), float(b/a), rel_tol=1e-5)
+    for _ in range(10):
+        a, b = SumOfRadicals.random(5), SumOfRadicals.random(3)
+        assert isclose(float(a)/float(b), float(a/b), rel_tol=1e-5)
+    
+        a, b = SumOfRadicals.random(5), randint(-20, +20-1) or +20
+        assert isclose(float(a)/float(b), float(a/b))
+    
+        a, b = SumOfRadicals.random(3), randint(-20, +20)
+        assert isclose(float(b)/float(a), float(b/a), rel_tol=1e-5)
     
     #pow
     for _ in range(10):

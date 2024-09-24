@@ -18,7 +18,7 @@ setup(
     py_modules = ['sumofradicals'],
     url = 'https://github.com/goessl/sumofradicals',
     python_requires = '>=3.12',
-    install_requires = ['sympy'],
+    install_requires = ['sympy', 'numpy', 'scipy'],
     
     classifiers = [
         'Development Status :: 5 - Production/Stable',
